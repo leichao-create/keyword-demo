@@ -25,6 +25,7 @@
     .platform-wb { background: #E6162D; }
     .platform-xhs { background: #FF2442; }
     .platform-default { background: #6366f1; }
+    mark.kw-hl { background: #fef08a; color: #713f12; border-radius: 3px; padding: 0 2px; }
   </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -270,7 +271,7 @@
             <div class="text-purple-600 text-xs font-semibold mb-1 flex items-center gap-1">
               <span>✨</span> AI 摘要
             </div>
-            <p id="${cardId}-summary" class="text-gray-600 text-xs leading-relaxed expand-text">${escHtml(item.ai_summary)}</p>
+            <p id="${cardId}-summary" class="text-gray-600 text-xs leading-relaxed expand-text">${highlightText(item.ai_summary, currentKeywords)}</p>
             ${item.ai_summary.length > 150 ? `<button onclick="toggleExpand('${cardId}-summary')" class="text-purple-500 text-xs mt-1 hover:underline">展开</button>` : ''}
           </div>` : ''}
 
@@ -290,7 +291,7 @@
               <span id="${cardId}-vtarrow" class="transition-transform">▶</span>
             </button>
             <div id="${cardId}-vtbody" class="hidden bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto">
-              <p class="text-gray-500 text-xs leading-relaxed whitespace-pre-wrap break-words">${escHtml(item.videoTexts)}</p>
+              <p class="text-gray-500 text-xs leading-relaxed whitespace-pre-wrap break-words">${highlightText(item.videoTexts, currentKeywords)}</p>
             </div>
           </div>` : ''}
 
@@ -328,6 +329,22 @@
         .replace(/"/g, '&quot;')
     }
 
+    let currentKeywords = []
+
+    function highlightText(text, keywords) {
+      if (!keywords || !keywords.length) return escHtml(text)
+      let escaped = escHtml(text)
+      keywords.forEach(kw => {
+        if (!kw) return
+        const escapedKw = escHtml(kw).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        escaped = escaped.replace(
+          new RegExp(escapedKw, 'gi'),
+          m => `<mark class="kw-hl">${m}</mark>`,
+        )
+      })
+      return escaped
+    }
+
     function setState(state) {
       document.getElementById('emptyState').classList.toggle('hidden', state !== 'empty')
       document.getElementById('loadingState').classList.toggle('hidden', state !== 'loading')
@@ -349,6 +366,8 @@
       const input = document.getElementById('searchInput')
       const keywords = input.value.trim()
       if (!keywords) { input.focus(); return }
+
+      currentKeywords = keywords.trim().split(/\s+/).filter(Boolean)
 
       const btn = document.getElementById('searchBtn')
       btn.disabled = true
