@@ -8,7 +8,7 @@ const PLATFORM_FILTER = "platform == 'YOUTUBE'";
 const QUERY_BATCH_SIZE = 100; // 缩小批次，减少单次连接时间
 const INSERT_BATCH_SIZE = 50;
 const AI_CONCURRENCY = 5;
-const MIGRATE_LIMIT = 1000; // 最多迁移条数，设为 Infinity 则不限
+const MIGRATE_LIMIT = 500; // 最多迁移条数，设为 Infinity 则不限
 const ai = new OpenAI({
     apiKey: process.env.AIHUBMIX_API_KEY ?? '',
     baseURL: 'https://aihubmix.com/v1',
@@ -19,7 +19,7 @@ async function generateSummary(videoTexts) {
     const prompt = `Act as a professional media content analyst. Please analyze the provided list of video titles and summarize the blogger's niche and content.
 
 ### Constraints:
-1. Language: You must respond in the SAME language as the provided input list.
+1. Language: Always respond in English, regardless of the input language.
 2. Format: Provide a single, concise sentence.
 3. Content: Accurately summarize the blogger's "niche/field" and "core content themes."
 4. Tone: Professional and direct.
@@ -29,7 +29,7 @@ ${videoTexts}`;
     const res = await ai.chat.completions.create({
         model: MODEL,
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 256,
+        max_tokens: 512,
     });
     return res.choices[0]?.message?.content?.trim() ?? '';
 }

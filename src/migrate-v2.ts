@@ -100,6 +100,7 @@ async function ensureV2Collection(vectorDim: number) {
         type: FunctionType.BM25,
         input_field_names: ['videoTexts'],
         output_field_names: ['sparse_vector'],
+        params: {},
       },
     ],
   })
@@ -250,7 +251,7 @@ async function main() {
       for (const batch of chunk(records, INSERT_BATCH_SIZE)) {
         await withRetry(() => target.insert({ collection_name: TARGET_COLLECTION, data: batch }))
         totalInserted += batch.length
-        existingIds.add(...batch.map((r) => r.id))
+        batch.forEach((r) => existingIds.add(r.id))
       }
 
       await target.flushSync({ collection_names: [TARGET_COLLECTION] })
