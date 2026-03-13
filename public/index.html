@@ -117,7 +117,7 @@
   </div>
 
   <footer class="text-center py-8 text-gray-300 text-xs">
-    Powered by Milvus · Dense Vector + AI Summary
+    Powered by Milvus · BM25 Sparse Vector + AI Summary
   </footer>
 
   <script>
@@ -204,6 +204,7 @@
       const p = getPlatformCfg(item.platform)
       const hasSummary = item.ai_summary && item.ai_summary.length > 10
       const hasSignature = item.signature && item.signature.length > 2
+      const hasVideoTexts = item.videoTexts && item.videoTexts.length > 2
 
       const sourcesBadges = (item.sources || []).map(s => {
         const cfg = SOURCE_CONFIG[s] || { label: s, bg: 'bg-gray-100', text: 'text-gray-600', title: '' }
@@ -278,6 +279,21 @@
           <p class="relative z-10 text-gray-400 text-xs leading-relaxed mb-3 line-clamp-2 italic">"${escHtml(item.signature)}"</p>
           ` : ''}
 
+          <!-- Video Texts -->
+          ${hasVideoTexts ? `
+          <div class="relative z-10 mb-3">
+            <button
+              onclick="toggleVideoTexts('${cardId}-vtbody', this)"
+              class="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-1"
+            >
+              <span>📋 视频标题</span>
+              <span id="${cardId}-vtarrow" class="transition-transform">▶</span>
+            </button>
+            <div id="${cardId}-vtbody" class="hidden bg-gray-50 rounded-xl p-3 max-h-48 overflow-y-auto">
+              <p class="text-gray-500 text-xs leading-relaxed whitespace-pre-wrap break-words">${escHtml(item.videoTexts)}</p>
+            </div>
+          </div>` : ''}
+
           <!-- Sources -->
           <div class="relative z-10 flex flex-wrap gap-1.5 pt-2 border-t border-gray-50">
             ${multiSource}
@@ -285,6 +301,14 @@
           </div>
         </div>
       `
+    }
+
+    function toggleVideoTexts(bodyId, btn) {
+      const body = document.getElementById(bodyId)
+      const arrow = btn.querySelector('span:last-child')
+      if (!body) return
+      const hidden = body.classList.toggle('hidden')
+      if (arrow) arrow.style.transform = hidden ? '' : 'rotate(90deg)'
     }
 
     function toggleExpand(id) {

@@ -1,14 +1,13 @@
 import 'dotenv/config'
-import OpenAI from 'openai'
 import { createRailwayClient } from './milvus.js'
 
-const COLLECTION = process.env.MILVUS_COLLECTION ?? 'easykol_influencer_v1'
+const COLLECTION = process.env.MILVUS_COLLECTION ?? 'easykol_influencer_v2'
 const TOP_K = 20
 
 const OUTPUT_FIELDS = [
   'id', 'userId', 'account', 'platform', 'nickname',
   'followerCount', 'averagePlayCount', 'region', 'language',
-  'ai_summary', 'signature', 'meta', 'lastPublishedTime',
+  'ai_summary', 'signature', 'videoTexts', 'meta', 'lastPublishedTime',
 ]
 
 export interface InfluencerResult {
@@ -23,28 +22,10 @@ export interface InfluencerResult {
   language: string
   ai_summary: string
   signature: string
+  videoTexts: string
   meta?: Record<string, unknown>
   sources: string[]
   score?: number
-}
-
-const openai = new OpenAI({
-  baseURL: 'https://aihubmix.com/v1',
-  apiKey: process.env.AIHUBMIX_API_KEY ?? '',
-})
-
-async function getEmbedding(text: string): Promise<number[] | null> {
-  if (!process.env.AIHUBMIX_API_KEY) return null
-  try {
-    const res = await openai.embeddings.create({
-      model: process.env.EMBEDDING_MODEL ?? 'text-embedding-3-large',
-      input: text,
-    })
-    return res.data[0].embedding
-  } catch (err) {
-    console.error('[search] embedding error:', err)
-    return null
-  }
 }
 
 function escapeLike(s: string): string {
@@ -70,6 +51,7 @@ function normalizeRecord(r: Record<string, unknown>): InfluencerResult {
     language: String(r.language ?? ''),
     ai_summary: String(r.ai_summary ?? ''),
     signature: String(r.signature ?? ''),
+    videoTexts: String(r.videoTexts ?? ''),
     meta: r.meta as Record<string, unknown> | undefined,
     sources: [],
     score: typeof r.score === 'number' ? r.score : undefined,
@@ -104,37 +86,29 @@ export async function multiPathSearch(
 ): Promise<{ results: InfluencerResult[]; paths: Record<string, number> }> {
   const milvus = createRailwayClient()
   const paths: Record<string, number> = {}
-
-  const embeddingResult = await Promise.resolve(getEmbedding(keywords)).then(v => ({ status: 'fulfilled' as const, value: v })).catch(e => ({ status: 'rejected' as const, reason: e }))
-
   const resultSets: Array<{ hits: InfluencerResult[]; source: string }> = []
   const pendingJobs: Array<Promise<{ hits: InfluencerResult[]; source: string } | null>> = []
 
-  // Path 1: 稠密向量语义搜索
-  if (embeddingResult.status === 'fulfilled' && embeddingResult.value) {
-    const vec = embeddingResult.value
-    pendingJobs.push(
-      milvus
-        .search({
-          collection_name: COLLECTION,
-          data: [vec],
-          anns_field: 'dense_vector',
-          limit: TOP_K,
-          output_fields: OUTPUT_FIELDS,
-          params: { ef: 200 },
-        })
-        .then((res) => {
-          const hits = ((res?.results ?? []) as unknown as Record<string, unknown>[]).map(normalizeRecord)
-          return { hits, source: 'dense' }
-        })
-        .catch((err) => {
-          console.error('[search] dense error:', err)
-          return null
-        }),
-    )
-  } else {
-    paths['dense'] = 0
-  }
+  // Path 1: BM25 稀疏向量全文检索（videoTexts）
+  pendingJobs.push(
+    milvus
+      .search({
+        collection_name: COLLECTION,
+        data: [keywords],
+        anns_field: 'sparse_vector',
+        limit: TOP_K,
+        output_fields: OUTPUT_FIELDS,
+        params: { drop_ratio_search: 0.2 },
+      })
+      .then((res) => {
+        const hits = ((res?.results ?? []) as unknown as Record<string, unknown>[]).map(normalizeRecord)
+        return { hits, source: 'bm25' }
+      })
+      .catch((err) => {
+        console.error('[search] bm25 error:', err)
+        return null
+      }),
+  )
 
   // Path 2: ai_summary 关键词匹配
   const summaryFilter = buildSummaryFilter(keywords)

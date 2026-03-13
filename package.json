@@ -6,6 +6,7 @@
     "dev": "tsx src/index.ts",
     "server": "tsx src/server.ts",
     "migrate": "tsx src/migrate.ts",
+    "migrate:v2": "tsx src/migrate-v2.ts",
     "build": "tsc",
     "start": "node dist/server.js"
   },
