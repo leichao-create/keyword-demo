@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>博主搜索 · KOL Search</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card-hover { transition: all 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+    .source-badge { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+    .search-input:focus { box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3); }
+    .skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    .expand-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .expand-text.expanded { display: block; -webkit-line-clamp: unset; }
+    [role="link"]:hover { outline: 2px solid #818cf8; outline-offset: -2px; }
+    .platform-yt { background: #FF0000; }
+    .platform-ins { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+    .platform-tiktok { background: #000000; }
+    .platform-wb { background: #E6162D; }
+    .platform-xhs { background: #FF2442; }
+    .platform-default { background: #6366f1; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <!-- Header -->
+  <div class="gradient-bg text-white py-10 px-4 shadow-lg">
+    <div class="max-w-4xl mx-auto text-center">
+      <h1 class="text-3xl font-bold mb-2 tracking-tight">🔍 KOL 博主搜索</h1>
+      <p class="text-purple-200 text-sm mb-8">语义向量 + AI 摘要双路召回</p>
+
+      <!-- Search Box -->
+      <div class="flex gap-2 max-w-2xl mx-auto">
+        <input
+          id="searchInput"
+          type="text"
+          placeholder="输入关键词，如：美妆 护肤 开箱..."
+          class="search-input flex-1 px-5 py-3.5 rounded-xl text-gray-800 bg-white text-base outline-none border-0"
+          autocomplete="off"
+        />
+        <button
+          id="searchBtn"
+          onclick="doSearch()"
+          class="px-6 py-3.5 bg-white text-purple-700 font-semibold rounded-xl hover:bg-purple-50 transition-colors whitespace-nowrap"
+        >
+          搜索
+        </button>
+      </div>
+
+      <!-- Quick tags -->
+      <div class="mt-4 flex flex-wrap gap-2 justify-center">
+        <span class="text-purple-200 text-xs mr-1 self-center">热门：</span>
+        <button onclick="quickSearch('美妆 护肤')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">美妆 护肤</button>
+        <button onclick="quickSearch('科技 数码 评测')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">科技 数码</button>
+        <button onclick="quickSearch('fitness gym workout')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">fitness gym</button>
+        <button onclick="quickSearch('cooking recipe food')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">cooking food</button>
+        <button onclick="quickSearch('travel vlog adventure')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">travel vlog</button>
+        <button onclick="quickSearch('fashion style outfit')" class="px-3 py-1 bg-white/20 hover:bg-white/30 rounded-full text-xs text-white transition-colors">fashion style</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="max-w-6xl mx-auto px-4 py-8">
+
+    <!-- Empty State -->
+    <div id="emptyState" class="text-center py-20 text-gray-400">
+      <div class="text-6xl mb-4">🎯</div>
+      <p class="text-lg font-medium text-gray-500">输入关键词开始搜索博主</p>
+      <p class="text-sm mt-2">支持中英文、多词搜索</p>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm" id="skeletonTemplate">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="skeleton w-12 h-12 rounded-full"></div>
+            <div class="flex-1">
+              <div class="skeleton h-4 w-3/4 rounded mb-2"></div>
+              <div class="skeleton h-3 w-1/2 rounded"></div>
+            </div>
+          </div>
+          <div class="skeleton h-3 w-full rounded mb-2"></div>
+          <div class="skeleton h-3 w-5/6 rounded mb-2"></div>
+          <div class="skeleton h-3 w-2/3 rounded mb-4"></div>
+          <div class="flex gap-2">
+            <div class="skeleton h-6 w-16 rounded-full"></div>
+            <div class="skeleton h-6 w-16 rounded-full"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden text-center py-16">
+      <div class="text-5xl mb-4">⚠️</div>
+      <p id="errorMsg" class="text-red-500 font-medium"></p>
+      <p class="text-gray-400 text-sm mt-2">请检查服务状态或稍后重试</p>
+    </div>
+
+    <!-- No Results -->
+    <div id="noResults" class="hidden text-center py-16 text-gray-400">
+      <div class="text-5xl mb-4">🔭</div>
+      <p class="text-lg font-medium text-gray-500">未找到相关博主</p>
+      <p class="text-sm mt-2">换个关键词试试？</p>
+    </div>
+
+    <!-- Results Grid -->
+    <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+  </div>
+
+  <footer class="text-center py-8 text-gray-300 text-xs">
+    Powered by Milvus · Dense Vector + AI Summary
+  </footer>
+
+  <script>
+    // Build platform profile URL
+    function getProfileUrl(item) {
+      const account = (item.account || '').trim()
+      const userId = (item.userId || '').trim()
+      const platform = (item.platform || '').toUpperCase()
+      // Try meta.url / meta.profileUrl / meta.homepageUrl first
+      const meta = item.meta || {}
+      const metaUrl = meta.url || meta.profileUrl || meta.homepageUrl || meta.homepage || meta.link
+      const handle = (account || userId).replace(/^@+/, '')
+      if (metaUrl) {
+        const u = String(metaUrl)
+        // Fix bare YouTube URLs missing @ (e.g. youtube.com/clplus → youtube.com/@clplus)
+        if (platform === 'YOUTUBE') {
+          const m = u.match(/^(https?:\/\/(?:www\.)?youtube\.com\/)([^@\/][^\/]*)$/)
+          if (m && !/^(channel|c|user)\//.test(m[2])) return `${m[1]}@${m[2]}`
+        }
+        return u
+      }
+      if (!handle) return null
+      switch (platform) {
+        case 'YOUTUBE':
+          if (handle.startsWith('UC') && handle.length === 24 && /^[A-Za-z0-9_-]+$/.test(handle))
+            return `https://www.youtube.com/channel/${handle}`
+          if (/^[A-Za-z0-9._-]+$/.test(handle))
+            return `https://www.youtube.com/@${handle}`
+          return null
+        case 'INSTAGRAM':
+          return `https://www.instagram.com/${handle}/`
+        case 'TIKTOK':
+          return `https://www.tiktok.com/@${handle}`
+        case 'WEIBO':
+          // userId is numeric → /u/id; otherwise account handle
+          return /^\d+$/.test(handle)
+            ? `https://weibo.com/u/${handle}`
+            : `https://weibo.com/n/${handle}`
+        case 'XIAOHONGSHU':
+        case 'XHS':
+          return `https://www.xiaohongshu.com/user/profile/${userId.replace(/^@+/, '') || handle}`
+        case 'TWITTER':
+        case 'X':
+          return `https://x.com/${handle}`
+        case 'FACEBOOK':
+          return `https://www.facebook.com/${handle}`
+        case 'BILIBILI':
+          return /^\d+$/.test(handle)
+            ? `https://space.bilibili.com/${handle}`
+            : `https://space.bilibili.com/${userId.replace(/^@+/, '') || handle}`
+        default:
+          return null
+      }
+    }
+
+    // Platform display config
+    const PLATFORMS = {
+      YOUTUBE: { name: 'YouTube', cls: 'platform-yt', icon: '▶' },
+      INSTAGRAM: { name: 'Instagram', cls: 'platform-ins', icon: '📷' },
+      TIKTOK: { name: 'TikTok', cls: 'platform-tiktok', icon: '♪' },
+      WEIBO: { name: '微博', cls: 'platform-wb', icon: '微' },
+      XIAOHONGSHU: { name: '小红书', cls: 'platform-xhs', icon: '书' },
+    }
+
+    const SOURCE_CONFIG = {
+      bm25: { label: 'BM25', bg: 'bg-green-100', text: 'text-green-700', title: '关键词稀疏向量匹配' },
+      dense: { label: '语义', bg: 'bg-blue-100', text: 'text-blue-700', title: '稠密向量语义搜索' },
+      summary: { label: 'AI摘要', bg: 'bg-purple-100', text: 'text-purple-700', title: 'AI摘要关键词匹配' },
+    }
+
+    function formatNum(n) {
+      if (!n || n === 0) return '-'
+      if (n >= 1e8) return (n / 1e8).toFixed(1) + '亿'
+      if (n >= 1e4) return (n / 1e4).toFixed(1) + 'w'
+      if (n >= 1000) return (n / 1000).toFixed(1) + 'k'
+      return String(n)
+    }
+
+    function getPlatformCfg(platform) {
+      return PLATFORMS[platform?.toUpperCase()] ?? { name: platform || '未知', cls: 'platform-default', icon: '•' }
+    }
+
+    function renderCard(item) {
+      const p = getPlatformCfg(item.platform)
+      const hasSummary = item.ai_summary && item.ai_summary.length > 10
+      const hasSignature = item.signature && item.signature.length > 2
+
+      const sourcesBadges = (item.sources || []).map(s => {
+        const cfg = SOURCE_CONFIG[s] || { label: s, bg: 'bg-gray-100', text: 'text-gray-600', title: '' }
+        return `<span class="source-badge px-2 py-0.5 rounded-full text-xs font-medium ${cfg.bg} ${cfg.text}" title="${cfg.title}">${cfg.label}</span>`
+      }).join('')
+
+      const multiSource = item.sources?.length > 1
+        ? `<span class="source-badge px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700" title="多路召回命中">⭐ 多路命中</span>`
+        : ''
+
+      const avatarLetter = (item.nickname || item.account || '?')[0]?.toUpperCase() ?? '?'
+      const avatarColor = ['bg-violet-500', 'bg-pink-500', 'bg-blue-500', 'bg-emerald-500', 'bg-orange-500', 'bg-cyan-500']
+      const colorIdx = avatarLetter.charCodeAt(0) % avatarColor.length
+      const avatarBg = avatarColor[colorIdx]
+
+      const cardId = 'card-' + item.id.replace(/[^a-z0-9]/gi, '_')
+
+      const profileUrl = getProfileUrl(item)
+
+      return `
+        <div class="bg-white rounded-2xl p-5 shadow-sm card-hover border border-gray-100/60 relative${profileUrl ? ' cursor-pointer' : ''}">
+          ${profileUrl ? `<a href="${escHtml(profileUrl)}" target="_blank" rel="noopener noreferrer"
+              aria-label="打开 ${escHtml(item.nickname || item.account || '')} 的主页"
+              class="absolute inset-0 rounded-2xl z-0"></a>` : ''}
+          <!-- Header -->
+          <div class="relative z-10 flex items-start gap-3 mb-3">
+            <div class="flex-shrink-0 w-11 h-11 rounded-full ${avatarBg} flex items-center justify-center text-white font-bold text-lg">
+              ${avatarLetter}
+            </div>
+            <div class="flex-1 min-w-0 ${profileUrl ? 'pr-8' : ''}">
+              <div class="font-semibold text-gray-900 truncate text-base">${escHtml(item.nickname || item.account || '未知博主')}</div>
+              <div class="text-gray-400 text-xs truncate mt-0.5">@${escHtml(item.account || item.userId || '-')}</div>
+            </div>
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <span class="${p.cls} text-white text-xs px-2.5 py-1 rounded-full font-medium">${p.icon} ${p.name}</span>
+              ${profileUrl ? `<a href="${escHtml(profileUrl)}" target="_blank" rel="noopener noreferrer"
+                title="打开主页"
+                class="relative z-20 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 hover:bg-indigo-100 hover:text-indigo-600 text-gray-400 text-sm transition-colors">↗</a>` : ''}
+            </div>
+          </div>
+
+          <!-- Stats Row -->
+          <div class="relative z-10 flex items-center gap-4 mb-3 text-sm">
+            <div class="flex-1 text-center">
+              <div class="font-bold text-gray-800 text-base">${formatNum(item.followerCount)}</div>
+              <div class="text-gray-400 text-xs">粉丝</div>
+            </div>
+            <div class="w-px h-8 bg-gray-100"></div>
+            <div class="flex-1 text-center">
+              <div class="font-bold text-gray-800 text-base">${formatNum(item.averagePlayCount)}</div>
+              <div class="text-gray-400 text-xs">均播放</div>
+            </div>
+            <div class="w-px h-8 bg-gray-100"></div>
+            <div class="flex-1 text-center">
+              <div class="font-bold text-gray-800 text-sm truncate">${escHtml(item.region || '-')}</div>
+              <div class="text-gray-400 text-xs">${escHtml(item.language || '-')}</div>
+            </div>
+          </div>
+
+          <!-- AI Summary -->
+          ${hasSummary ? `
+          <div class="relative z-10 mb-3 bg-purple-50/60 rounded-xl p-3">
+            <div class="text-purple-600 text-xs font-semibold mb-1 flex items-center gap-1">
+              <span>✨</span> AI 摘要
+            </div>
+            <p id="${cardId}-summary" class="text-gray-600 text-xs leading-relaxed expand-text">${escHtml(item.ai_summary)}</p>
+            ${item.ai_summary.length > 150 ? `<button onclick="toggleExpand('${cardId}-summary')" class="text-purple-500 text-xs mt-1 hover:underline">展开</button>` : ''}
+          </div>` : ''}
+
+          <!-- Signature -->
+          ${hasSignature ? `
+          <p class="relative z-10 text-gray-400 text-xs leading-relaxed mb-3 line-clamp-2 italic">"${escHtml(item.signature)}"</p>
+          ` : ''}
+
+          <!-- Sources -->
+          <div class="relative z-10 flex flex-wrap gap-1.5 pt-2 border-t border-gray-50">
+            ${multiSource}
+            ${sourcesBadges}
+          </div>
+        </div>
+      `
+    }
+
+    function toggleExpand(id) {
+      const el = document.getElementById(id)
+      const btn = el?.nextElementSibling
+      if (!el || !btn) return
+      const isExpanded = el.classList.contains('expanded')
+      el.classList.toggle('expanded')
+      btn.textContent = isExpanded ? '展开' : '收起'
+    }
+
+    function escHtml(s) {
+      return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+    }
+
+    function setState(state) {
+      document.getElementById('emptyState').classList.toggle('hidden', state !== 'empty')
+      document.getElementById('loadingState').classList.toggle('hidden', state !== 'loading')
+      document.getElementById('errorState').classList.toggle('hidden', state !== 'error')
+      document.getElementById('noResults').classList.toggle('hidden', state !== 'noResults')
+      document.getElementById('resultsGrid').classList.toggle('hidden', state !== 'results')
+    }
+
+    function showLoading() {
+      setState('loading')
+      // replicate skeletons
+      const tpl = document.getElementById('skeletonTemplate')
+      const container = document.querySelector('#loadingState .grid')
+      container.innerHTML = ''
+      for (let i = 0; i < 6; i++) container.appendChild(tpl.cloneNode(true))
+    }
+
+    async function doSearch() {
+      const input = document.getElementById('searchInput')
+      const keywords = input.value.trim()
+      if (!keywords) { input.focus(); return }
+
+      const btn = document.getElementById('searchBtn')
+      btn.disabled = true
+      btn.textContent = '搜索中…'
+      showLoading()
+
+      const t0 = Date.now()
+
+      try {
+        const res = await fetch('/api/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keywords, limit: 30 }),
+        })
+
+        const data = await res.json()
+        const elapsed = Date.now() - t0
+
+        if (!res.ok) {
+          setState('error')
+          document.getElementById('errorMsg').textContent = data.error ?? '请求失败'
+          return
+        }
+
+        const { results, paths } = data
+
+        if (!results || results.length === 0) {
+          setState('noResults')
+          return
+        }
+
+        // Render cards
+        const grid = document.getElementById('resultsGrid')
+        grid.innerHTML = results.map(renderCard).join('')
+        setState('results')
+
+
+      } catch (err) {
+        setState('error')
+        document.getElementById('errorMsg').textContent = '网络错误: ' + err.message
+      } finally {
+        btn.disabled = false
+        btn.textContent = '搜索'
+      }
+    }
+
+    function quickSearch(kw) {
+      document.getElementById('searchInput').value = kw
+      doSearch()
+    }
+
+    // Enter key support
+    document.getElementById('searchInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doSearch()
+    })
+  </script>
+</body>
+</html>

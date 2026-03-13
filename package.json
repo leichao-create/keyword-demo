@@ -1,0 +1,25 @@
+{
+  "name": "keyword-demo",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "server": "tsx src/server.ts",
+    "migrate": "tsx src/migrate.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.2.0",
+    "@fastify/static": "^9.0.0",
+    "@zilliz/milvus2-sdk-node": "^2.4.9",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.8.2",
+    "openai": "^6.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
