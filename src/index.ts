@@ -62,6 +62,7 @@ async function main() {
         type: FunctionType.BM25,
         input_field_names: ['videoTexts'],
         output_field_names: ['sparse_vector'],
+        params: {},
       },
     ],
   })
@@ -98,7 +99,7 @@ async function main() {
   })
   console.log('\nFunctions:')
   final.schema.functions?.forEach((fn) => {
-    console.log(` - ${fn.name}: ${fn.input_field_names.join(',')} → ${fn.output_field_names.join(',')}`)
+    console.log(` - ${fn.name}: ${fn.input_field_names?.join(',') ?? ''} → ${fn.output_field_names?.join(',') ?? ''}`)
   })
 }
 
